@@ -7,7 +7,7 @@ This script exposes Amazon EC2 CloudWatch as a data source for the Google Visual
 Requirements:
 - AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, read in from settings.py
 - boto, a Python interface for Amazon Web Services (http://code.google.com/p/boto/)
-- gviz_api, a Python library for creating Google Visualization API data sources 
+- gviz_api, a Python library for creating Google Visualization API data sources
   (http://code.google.com/p/google-visualization-python/)
 - pytz, world timezone definitions for Python (http://pytz.sourceforge.net/)
 
@@ -60,23 +60,23 @@ def get_cloudwatch_data(cloudviz_query, request_id, aws_access_key_id=None, aws_
     utc = pytz.utc
 
     # Build option list
-    opts = ['unit','metric','namespace','statistics','period', 'dimensions', 'prefix', 
+    opts = ['unit','metric','namespace','statistics','period', 'dimensions', 'prefix',
             'start_time', 'end_time', 'calc_rate', 'region', 'range', 'timezone']
-    
+
     # Set default parameter values from config.py
     qa = DEFAULTS.copy()
-    
+
     # Set passed args
     for opt in opts:
         if opt in cloudviz_query: qa[opt] = cloudviz_query[opt]
-    
+
     # Convert timestamps to datetimes if necessary
     for time in ['start_time','end_time']:
         if time in qa:
-            if type(qa[time]) == str or type(qa[time]) == unicode: 
+            if type(qa[time]) == str or type(qa[time]) == unicode:
                 qa[time] = datetime.strptime(qa[time].split(".")[0], '%Y-%m-%dT%H:%M:%S')
 
-    # If both start_time and end_time are specified, do nothing.  
+    # If both start_time and end_time are specified, do nothing.
     if 'start_time' in qa and 'end_time' in qa:
         pass
     # If only one of the times is specified, fill in the other based on range
@@ -88,7 +88,7 @@ def get_cloudwatch_data(cloudviz_query, request_id, aws_access_key_id=None, aws_
     else:
         qa['end_time'] = datetime.now()
         qa['start_time'] = qa['end_time'] - timedelta(hours=qa['range'])
-    
+
     if 'timezone' in qa:
         current_timezone = timezone(qa['timezone'])
 
@@ -99,7 +99,7 @@ def get_cloudwatch_data(cloudviz_query, request_id, aws_access_key_id=None, aws_
         # Override top-level vars
         for opt in cloudwatch_opts:
             if opt in cloudwatch_query: args[opt] = cloudwatch_query[opt]
-        
+
         # Calculate time range for period determination/sanity-check
         delta = args['end_time'] - args['start_time']
         delta_seconds = ( delta.days * 24 * 60 * 60 ) + delta.seconds + 1 #round microseconds up
@@ -108,30 +108,30 @@ def get_cloudwatch_data(cloudviz_query, request_id, aws_access_key_id=None, aws_
         min_period = 60 * int(delta_seconds / CW_MAX_DATA_POINTS / 60)
         if ((delta_seconds / CW_MAX_DATA_POINTS) % 60) > 0:
             min_period += 60
-        
+
         if 'period' in qa:
             if args['period'] < min_period:
                 args['period'] = min_period
         else:
             args['period'] = min_period
-        
+
         # Make sure period isn't smaller than CloudWatch allows
-        if args['period'] < CW_MIN_PERIOD: 
+        if args['period'] < CW_MIN_PERIOD:
             args['period'] = CW_MIN_PERIOD
-        
+
         # Defaulting AWS region to us-east-1
-        if not 'region' in args: 
+        if not 'region' in args:
             args['region'] = 'us-east-1'
-        
+
         # Use AWS keys if provided, otherwise just let the boto look it up
         if aws_access_key_id and aws_secret_access_key:
-            c = boto.ec2.cloudwatch.connect_to_region(  args['region'], aws_access_key_id=AWS_ACCESS_KEY_ID, 
+            c = boto.ec2.cloudwatch.connect_to_region(  args['region'], aws_access_key_id=AWS_ACCESS_KEY_ID,
                                                         aws_secret_access_key=AWS_SECRET_ACCESS_KEY, is_secure=False)
         else:
             boto.ec2.cloudwatch.connect_to_region(args['region'], is_secure=False)
-        
+
         # Pull data from EC2
-        results = c.get_metric_statistics(  args['period'], args['start_time'], args['end_time'], 
+        results = c.get_metric_statistics(  args['period'], args['start_time'], args['end_time'],
                                             args['metric'], args['namespace'], args['statistics'],
                                             args['dimensions'], args['unit'])
         # Format/transform results
@@ -150,20 +150,20 @@ def get_cloudwatch_data(cloudviz_query, request_id, aws_access_key_id=None, aws_
                 new_k = args['prefix']+k
                 d[new_k] = d[k]
                 del d[k]
-    
+
         rs.extend(results)
-        
+
         # Build data description and columns to be return
         description[args['prefix']+'Samples'] = ('number', args['prefix']+'Samples')
-        description[args['prefix']+'Unit'] = ('string', args['unit']) 
+        description[args['prefix']+'Unit'] = ('string', args['unit'])
         for stat in args['statistics']:
             # If Rate is desired, update label accordingly
             if stat == 'Sum' and args['calc_rate'] == True:
                 stat = 'Rate'
             description[args['prefix']+stat] = ('number', args['prefix']+stat)
-            columns.append(args['prefix']+stat)       
-    
-    # Sort data and present    
+            columns.append(args['prefix']+stat)
+
+    # Sort data and present
     data = sorted(rs, key=operator.itemgetter(u'Timestamp'))
     data_table = gviz_api.DataTable(description)
     data_table.LoadData(data)
@@ -175,17 +175,17 @@ def main():
     # Parse the query string
     fs = cgi.FieldStorage()
     cloudviz_query = simplejson.loads(fs.getvalue('qs'))
-    
+
     # Convert tqx to dict; tqx is a set of colon-delimited key/value pairs separated by semicolons
     tqx = {}
     for s in fs.getvalue('tqx').split(';'):
         key = s.split(':')[0]
         value = s.split(':')[1]
         tqx.update({key:value})
-    
+
     # Set reqId so we know who to send data back to
     request_id = tqx['reqId']
-        
+
     results = get_cloudwatch_data(cloudviz_query, request_id, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
     print "Content-type: text/plain"
     print

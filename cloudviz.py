@@ -28,19 +28,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import sys
 import cgi
 import operator
 from datetime import datetime, timedelta
-from django.utils import simplejson
+import simplejson
 from pytz import timezone
 import pytz
+from werkzeug.wrappers import Request, Response
 
 # Google Visualization API
 import gviz_api
 
 import boto.ec2.cloudwatch
-from boto.ec2.cloudwatch.metric import Metric
 
 from settings import AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, DEFAULTS, CW_MAX_DATA_POINTS, CW_MIN_PERIOD
 
@@ -171,7 +170,7 @@ def get_cloudwatch_data(cloudviz_query, request_id, aws_access_key_id=None, aws_
     results = data_table.ToJSonResponse(columns_order=columns, order_by="Timestamp", req_id=request_id)
     return results
 
-def main():
+def main(request):
     # Parse the query string
     fs = cgi.FieldStorage()
     cloudviz_query = simplejson.loads(fs.getvalue('qs'))
@@ -187,10 +186,10 @@ def main():
     request_id = tqx['reqId']
 
     results = get_cloudwatch_data(cloudviz_query, request_id, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
-    print "Content-type: text/plain"
-    print
-    print results
+    return results
 
-if __name__ == "__main__":
-    status = main()
-    sys.exit(status)
+
+def application(environ, start_response):
+    request = Request(environ)
+    out = main(request)
+    return Response(out, mimetype='text/plain')

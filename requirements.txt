@@ -2,3 +2,4 @@ boto==2.27.0
 # gviz_api_py
 https://google-visualization-python.googlecode.com/files/gviz_api_py-1.8.2.tar.gz
 pytz==2013.9
+Werkzeug==0.9.4

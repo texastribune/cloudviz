@@ -18,12 +18,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from datetime import datetime, timedelta
-from operator import itemgetter
+import os
 
 # Uncomment and set to your Amazon credentials:
-#AWS_ACCESS_KEY_ID = ""
-#AWS_SECRET_ACCESS_KEY = ""
+AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
 
 # Default values to use if a given parameter is not passed
 DEFAULTS = {'calc_rate': True,

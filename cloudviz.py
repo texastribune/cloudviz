@@ -28,13 +28,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import cgi
 import operator
+import os
 from datetime import datetime, timedelta
-import simplejson
+import json
 from pytz import timezone
 import pytz
 from werkzeug.wrappers import Request, Response
+from werkzeug.wsgi import SharedDataMiddleware
 
 # Google Visualization API
 import gviz_api
@@ -170,26 +171,38 @@ def get_cloudwatch_data(cloudviz_query, request_id, aws_access_key_id=None, aws_
     results = data_table.ToJSonResponse(columns_order=columns, order_by="Timestamp", req_id=request_id)
     return results
 
+
 def main(request):
+    if request.path == '/favicon.ico':
+        # most annoying thing ever
+        return Response('Not found', status=404)
+
     # Parse the query string
-    fs = cgi.FieldStorage()
-    cloudviz_query = simplejson.loads(fs.getvalue('qs'))
+    cloudviz_query = json.loads(request.args.get('qs'))
 
     # Convert tqx to dict; tqx is a set of colon-delimited key/value pairs separated by semicolons
     tqx = {}
-    for s in fs.getvalue('tqx').split(';'):
-        key = s.split(':')[0]
-        value = s.split(':')[1]
-        tqx.update({key:value})
+    for s in request.args.get('tqx').split(';'):
+        key, value = s.split(':')
+        tqx.update({key: value})
 
     # Set reqId so we know who to send data back to
     request_id = tqx['reqId']
 
     results = get_cloudwatch_data(cloudviz_query, request_id, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
-    return results
+    return Response(results, mimetype='text/plain')
 
 
 def application(environ, start_response):
     request = Request(environ)
-    out = main(request)
-    return Response(out, mimetype='text/plain')
+    response = main(request)
+    return response(environ, start_response)
+
+application = SharedDataMiddleware(application, {
+    '/examples': os.path.join(os.path.dirname(__file__), 'examples')
+})
+
+
+if __name__ == '__main__':
+    from werkzeug.serving import run_simple
+    run_simple('0.0.0.0', 8000, application, use_debugger=True, use_reloader=True)

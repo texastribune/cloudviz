@@ -1,2 +1,5 @@
 *.pyc
 .env
+
+# user's files
+reports

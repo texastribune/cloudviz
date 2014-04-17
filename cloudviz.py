@@ -35,7 +35,6 @@ import json
 from pytz import timezone
 import pytz
 from werkzeug.wrappers import Request, Response
-from werkzeug.wsgi import SharedDataMiddleware
 
 # Google Visualization API
 import gviz_api
@@ -198,9 +197,13 @@ def application(environ, start_response):
     response = main(request)
     return response(environ, start_response)
 
-application = SharedDataMiddleware(application, {
-    '/examples': os.path.join(os.path.dirname(__file__), 'examples')
-})
+from whitenoise import WhiteNoise
+BASE_DIR = os.path.dirname(__file__)
+application = WhiteNoise(application, max_age=0)
+application.add_files(
+    os.path.join(BASE_DIR, 'examples'), 'examples', )
+application.add_files(
+    os.path.join(BASE_DIR, 'reports'), 'reports', )
 
 
 if __name__ == '__main__':

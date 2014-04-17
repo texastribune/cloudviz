@@ -41,39 +41,46 @@ import gviz_api
 
 import boto.ec2.cloudwatch
 
-from settings import AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, DEFAULTS, CW_MAX_DATA_POINTS, CW_MIN_PERIOD
+from settings import (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, DEFAULTS,
+    CW_MAX_DATA_POINTS, CW_MIN_PERIOD)
 
-def get_cloudwatch_data(cloudviz_query, request_id, aws_access_key_id=None, aws_secret_access_key=None):
+
+def get_cloudwatch_data(cloudviz_query, request_id, aws_access_key_id=None,
+        aws_secret_access_key=None):
     """
-    Query CloudWatch and return the results in a Google Visualizations API-friendly format
+    Query CloudWatch and return the results in a Google Visualizations API-
+    friendly format
 
     Arguments:
     `cloudviz_query` -- (dict) parameters and values to be passed to CloudWatch (see README for more information)
     `request_id` -- (int) Google Visualizations request ID passed as part of the "tqx" parameter
     """
     # Initialize data description, columns to be returned, and result set
-    description = { "Timestamp": ("datetime", "Timestamp")}
+    description = {"Timestamp": ("datetime", "Timestamp")}
     columns = ["Timestamp"]
     rs = []
     current_timezone = timezone('UTC')
     utc = pytz.utc
 
     # Build option list
-    opts = ['unit','metric','namespace','statistics','period', 'dimensions', 'prefix',
-            'start_time', 'end_time', 'calc_rate', 'region', 'range', 'timezone']
+    opts = ['unit', 'metric', 'namespace', 'statistics', 'period',
+        'dimensions', 'prefix', 'start_time', 'end_time', 'calc_rate',
+        'region', 'range', 'timezone']
 
     # Set default parameter values from config.py
     qa = DEFAULTS.copy()
 
     # Set passed args
     for opt in opts:
-        if opt in cloudviz_query: qa[opt] = cloudviz_query[opt]
+        if opt in cloudviz_query:
+            qa[opt] = cloudviz_query[opt]
 
     # Convert timestamps to datetimes if necessary
-    for time in ['start_time','end_time']:
+    for time in ['start_time', 'end_time']:
         if time in qa:
             if type(qa[time]) == str or type(qa[time]) == unicode:
-                qa[time] = datetime.strptime(qa[time].split(".")[0], '%Y-%m-%dT%H:%M:%S')
+                qa[time] = datetime.strptime(qa[time].split(".")[0],
+                    '%Y-%m-%dT%H:%M:%S')
 
     # If both start_time and end_time are specified, do nothing.
     if 'start_time' in qa and 'end_time' in qa:
@@ -92,16 +99,18 @@ def get_cloudwatch_data(cloudviz_query, request_id, aws_access_key_id=None, aws_
         current_timezone = timezone(qa['timezone'])
 
     # Parse, build, and run each CloudWatch query
-    cloudwatch_opts = ['unit', 'metric', 'namespace', 'statistics', 'period', 'dimensions', 'prefix', 'calc_rate', 'region']
+    cloudwatch_opts = ['unit', 'metric', 'namespace', 'statistics', 'period',
+        'dimensions', 'prefix', 'calc_rate', 'region']
     for cloudwatch_query in cloudviz_query['cloudwatch_queries']:
         args = qa.copy()
         # Override top-level vars
         for opt in cloudwatch_opts:
-            if opt in cloudwatch_query: args[opt] = cloudwatch_query[opt]
+            if opt in cloudwatch_query:
+                args[opt] = cloudwatch_query[opt]
 
         # Calculate time range for period determination/sanity-check
         delta = args['end_time'] - args['start_time']
-        delta_seconds = ( delta.days * 24 * 60 * 60 ) + delta.seconds + 1 #round microseconds up
+        delta_seconds = (delta.days * 24 * 60 * 60) + delta.seconds + 1  # round microseconds up
 
         # Determine min period as the smallest multiple of 60 that won't result in too many data points
         min_period = 60 * int(delta_seconds / CW_MAX_DATA_POINTS / 60)
@@ -124,15 +133,18 @@ def get_cloudwatch_data(cloudviz_query, request_id, aws_access_key_id=None, aws_
 
         # Use AWS keys if provided, otherwise just let the boto look it up
         if aws_access_key_id and aws_secret_access_key:
-            c = boto.ec2.cloudwatch.connect_to_region(  args['region'], aws_access_key_id=AWS_ACCESS_KEY_ID,
-                                                        aws_secret_access_key=AWS_SECRET_ACCESS_KEY, is_secure=False)
+            c = boto.ec2.cloudwatch.connect_to_region(
+                args['region'], aws_access_key_id=AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=AWS_SECRET_ACCESS_KEY, is_secure=False)
         else:
-            boto.ec2.cloudwatch.connect_to_region(args['region'], is_secure=False)
+            boto.ec2.cloudwatch.connect_to_region(args['region'],
+                is_secure=False)
 
         # Pull data from EC2
-        results = c.get_metric_statistics(  args['period'], args['start_time'], args['end_time'],
-                                            args['metric'], args['namespace'], args['statistics'],
-                                            args['dimensions'], args['unit'])
+        results = c.get_metric_statistics(
+            args['period'], args['start_time'], args['end_time'],
+            args['metric'], args['namespace'], args['statistics'],
+            args['dimensions'], args['unit'])
         # Format/transform results
         for d in results:
             # Convert timestamps to datetime objects
@@ -141,33 +153,37 @@ def get_cloudwatch_data(cloudviz_query, request_id, aws_access_key_id=None, aws_
             loc_dt = utc_dt.astimezone(current_timezone)
             d['Timestamp'] = loc_dt
             # If desired, convert Sum to a per-second Rate
-            if args['calc_rate'] == True and 'Sum' in args['statistics']: d.update({u'Rate': d[u'Sum']/args['period']})
+            if args['calc_rate'] is True and 'Sum' in args['statistics']:
+                d.update({u'Rate': d[u'Sum'] / args['period']})
             # Change key names
             keys = d.keys()
             keys.remove('Timestamp')
             for k in keys:
-                new_k = args['prefix']+k
+                new_k = args['prefix'] + k
                 d[new_k] = d[k]
                 del d[k]
 
         rs.extend(results)
 
         # Build data description and columns to be return
-        description[args['prefix']+'Samples'] = ('number', args['prefix']+'Samples')
-        description[args['prefix']+'Unit'] = ('string', args['unit'])
+        description[args['prefix'] + 'Samples'] = (
+            'number', args['prefix'] + 'Samples')
+        description[args['prefix'] + 'Unit'] = ('string', args['unit'])
         for stat in args['statistics']:
             # If Rate is desired, update label accordingly
-            if stat == 'Sum' and args['calc_rate'] == True:
+            if stat == 'Sum' and args['calc_rate'] is True:
                 stat = 'Rate'
-            description[args['prefix']+stat] = ('number', args['prefix']+stat)
-            columns.append(args['prefix']+stat)
+            description[args['prefix'] + stat] = (
+                'number', args['prefix'] + stat)
+            columns.append(args['prefix'] + stat)
 
     # Sort data and present
     data = sorted(rs, key=operator.itemgetter(u'Timestamp'))
     data_table = gviz_api.DataTable(description)
     data_table.LoadData(data)
 
-    results = data_table.ToJSonResponse(columns_order=columns, order_by="Timestamp", req_id=request_id)
+    results = data_table.ToJSonResponse(
+        columns_order=columns, order_by="Timestamp", req_id=request_id)
     return results
 
 
@@ -188,7 +204,8 @@ def main(request):
     # Set reqId so we know who to send data back to
     request_id = tqx['reqId']
 
-    results = get_cloudwatch_data(cloudviz_query, request_id, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+    results = get_cloudwatch_data(
+        cloudviz_query, request_id, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
     return Response(results, mimetype='text/plain')
 
 
@@ -208,4 +225,5 @@ application.add_files(
 
 if __name__ == '__main__':
     from werkzeug.serving import run_simple
-    run_simple('0.0.0.0', 8000, application, use_debugger=True, use_reloader=True)
+    run_simple('0.0.0.0', 8000, application, use_debugger=True,
+        use_reloader=True)

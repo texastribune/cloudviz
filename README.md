@@ -30,7 +30,7 @@ cloudviz expects the following query parameters as a JSON-encoded string passed 
 * `range` (int) - desired time range, in hours, for queried interval (e.g., _24_).  Note: `range` may be substituted for `start_time`, `end_time`, or both:
   * if `range` and `end_time` are specified, `start_time` is calculated as ( `end_time` - `range` )
   * if `range` and `start_time` are specified, `end_time` is calculated as ( `start_time` + `range` )
-  * if only `range` is specified, `end_time` is set to the current time and `start_time` is calculated as ( current time - `range` )  
+  * if only `range` is specified, `end_time` is set to the current time and `start_time` is calculated as ( current time - `range` )
 * `period` (int) - (optional) CloudWatch period (e.g., _120_).  Notes: must be a multiple of 60; if `period` is not specified, it will be automatically calculated as the smallest valid value (resulting in the most data points being returned) for the queried interval.
 * `region` (str) - (optional) AWS region (e.g., _"us-west-1"_; default is "us-east-1")
 * `calc_rate` (bool) - (optional) when set to _True_ and `statistics` includes _"Sum"_, cloudviz converts _Sum_ values to per-second _Rate_ values by dividing _Sum_ by seconds in `period` (e.g., for _RequestCount_, 150 Requests per period / 60 seconds per period = 2.5 Requests per second)
@@ -38,16 +38,16 @@ cloudviz expects the following query parameters as a JSON-encoded string passed 
   * `prefix` (str) - text identifier for data returned by a single CloudWatch query. This is prepended to the chart label of each data series (e.g., _"My LB "_)
 
 ### Example: Graphing CPU utilization of two instances
-Here's a JavaScript snippet for building a URL to pass to cloudviz.  See examples/host-cpu.html for the rest of the code.  Note that **start_time **and **end_time **are set in <code>settings.py</code>. 
+Here's a JavaScript snippet for building a URL to pass to cloudviz.  See examples/host-cpu.html for the rest of the code.  Note that **start_time **and **end_time **are set in <code>settings.py</code>.
 
-    var qa = {  
+    var qa = {
                 "namespace": "AWS/EC2",       // CloudWatch namespace (string
                 "metric": "CPUUtilization",   // CloudWatch metric (string)
                 "unit": "Percent",            // CloudWatch unit (string)
                 "statistics": ["Average","Maximum"],      // CloudWatch statistics (list of strings)
                 "period": 600,                // CloudWatch period (int)
                 "cloudwatch_queries":         // (list of dictionaries)
-                [   
+                [
                     {
                         "prefix": "Instance 1 CPU ",   // label prefix for associated data sets (string)
                         "dimensions": { "InstanceId": "i-bd14d3d5"} // CloudWatch dimensions (dictionary)
@@ -58,7 +58,7 @@ Here's a JavaScript snippet for building a URL to pass to cloudviz.  See example
                     }
                 ]
              };
-    
+
     var qs = JSON.stringify(qa);
     var url = 'http://' + window.location.host + '/cloudviz?qs=' + qs;  // assumes cloudviz.py is called at /data
 
@@ -85,3 +85,14 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
+
+## TODO
+
+The Texas Tribune's additions
+
+Starting a server on port 8000:
+
+    python cloudviz.py
+
+Open localhost:8000/reports/index.html

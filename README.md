@@ -91,8 +91,8 @@ limitations under the License.
 
 The Texas Tribune's additions
 
-Starting a server on port 8000:
+Starting a server on port 5000:
 
-    python cloudviz.py
+    python web.py
 
-Open localhost:8000/reports/index.html
+Open localhost:5000/reports/index.html

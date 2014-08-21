@@ -27,14 +27,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-
-import operator
-import os
 from datetime import datetime, timedelta
 import json
+import operator
+import os
+
+from flask import Flask, request
 from pytz import timezone
 import pytz
-from werkzeug.wrappers import Request, Response
 
 # Google Visualization API
 import gviz_api
@@ -43,6 +43,9 @@ import boto.ec2.cloudwatch
 
 from settings import (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, DEFAULTS,
     CW_MAX_DATA_POINTS, CW_MIN_PERIOD)
+
+
+app = Flask(__name__)
 
 
 def get_cloudwatch_data(cloudviz_query, request_id, aws_access_key_id=None,
@@ -187,11 +190,10 @@ def get_cloudwatch_data(cloudviz_query, request_id, aws_access_key_id=None,
     return results
 
 
-def main(request):
-    if request.path == '/favicon.ico':
-        # most annoying thing ever
-        return Response('Not found', status=404)
-
+# TODO standardize what url to look for
+@app.route('/data')
+@app.route('/cloudviz')
+def main():
     # Parse the query string
     cloudviz_query = json.loads(request.args.get('qs'))
 
@@ -206,24 +208,18 @@ def main(request):
 
     results = get_cloudwatch_data(
         cloudviz_query, request_id, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
-    return Response(results, mimetype='text/plain')
+    return results  # TODO mimetype='text/plain' or javascript
 
-
-def application(environ, start_response):
-    request = Request(environ)
-    response = main(request)
-    return response(environ, start_response)
 
 from whitenoise import WhiteNoise
 BASE_DIR = os.path.dirname(__file__)
-application = WhiteNoise(application, max_age=0)
+application = WhiteNoise(app.wsgi_app, max_age=0)
 application.add_files(
     os.path.join(BASE_DIR, 'examples'), 'examples', )
 application.add_files(
     os.path.join(BASE_DIR, 'reports'), 'reports', )
+app.wsgi_app = application
 
 
-if __name__ == '__main__':
-    from werkzeug.serving import run_simple
-    run_simple('0.0.0.0', 8000, application, use_debugger=True,
-        use_reloader=True)
+if __name__ == "__main__":
+    app.run(debug=True)

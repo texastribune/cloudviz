@@ -5,3 +5,4 @@ https://google-visualization-python.googlecode.com/files/gviz_api_py-1.8.2.tar.g
 pytz==2013.9
 Werkzeug==0.9.4
 whitenoise==1.0
+Flask==0.10.1

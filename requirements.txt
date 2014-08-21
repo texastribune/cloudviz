@@ -1,7 +1,6 @@
-boto==2.27.0
-gunicorn==18.0
+boto==2.32.1
 # gviz_api_py
 https://google-visualization-python.googlecode.com/files/gviz_api_py-1.8.2.tar.gz
-pytz==2013.9
-whitenoise==1.0
+pytz==2014.4
+whitenoise==1.0.3
 Flask==0.10.1

@@ -204,6 +204,17 @@ def get_instances():
     } for x in instances]
 
 
+def get_elbs():
+    """List elastic load balancers."""
+    import boto.ec2.elb
+    conn = boto.ec2.elb.connect_to_region('us-east-1')
+    return [{
+        'name': x.name,
+        'instance_count': len(x.instances),
+        'created_time': x.created_time,
+    } for x in conn.get_all_load_balancers()]
+
+
 # TODO standardize what url to look for
 @app.route('/data')
 @app.route('/cloudviz')
@@ -229,6 +240,14 @@ def main():
 def list_ec2():
     data = {
         'instances': get_instances(),
+    }
+    return jsonify(**data)
+
+
+@app.route('/list/elb')
+def list_elb():
+    data = {
+        'instances': get_elbs(),
     }
     return jsonify(**data)
 

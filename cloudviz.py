@@ -256,8 +256,6 @@ from whitenoise import WhiteNoise
 BASE_DIR = os.path.dirname(__file__)
 application = WhiteNoise(app.wsgi_app, max_age=0)
 application.add_files(
-    os.path.join(BASE_DIR, 'examples'), 'examples', )
-application.add_files(
     os.path.join(BASE_DIR, 'reports'), 'reports', )
 app.wsgi_app = application
 

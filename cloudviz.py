@@ -32,7 +32,7 @@ import json
 import operator
 import os
 
-from flask import Flask, request
+from flask import Flask, request, jsonify
 from pytz import timezone
 import pytz
 
@@ -190,6 +190,20 @@ def get_cloudwatch_data(cloudviz_query, request_id, aws_access_key_id=None,
     return results
 
 
+def get_instances():
+    """List running instances in a format convenient for us."""
+    from boto import ec2
+    conn = ec2.connect_to_region('us-east-1')
+    # WISHLIST make this more flexible
+    instances = conn.get_only_instances(filters={'tag:environment': 'prod'})
+    return [{
+        'id': x.id,
+        'name': x.tags.get('Name'),
+        'site': x.tags.get('site'),
+        'launch_time': x.launch_time,
+    } for x in instances]
+
+
 # TODO standardize what url to look for
 @app.route('/data')
 @app.route('/cloudviz')
@@ -209,6 +223,14 @@ def main():
     results = get_cloudwatch_data(
         cloudviz_query, request_id, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
     return results  # TODO mimetype='text/plain' or javascript
+
+
+@app.route('/list/ec2')
+def list_ec2():
+    data = {
+        'instances': get_instances(),
+    }
+    return jsonify(**data)
 
 
 from whitenoise import WhiteNoise

@@ -91,7 +91,7 @@ def list_rds():
 
 
 BASE_DIR = os.path.dirname(__file__)
-application = WhiteNoise(app.wsgi_app, max_age=0)
+application = WhiteNoise(app.wsgi_app, max_age=None)  # XXX disable cache in dev
 application.add_files(
     os.path.join(BASE_DIR, 'reports'), 'reports', )
 app.wsgi_app = application

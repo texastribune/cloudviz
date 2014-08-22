@@ -72,6 +72,24 @@ def list_elb():
     return jsonify(**data)
 
 
+def get_rdss():
+    """List elastic load balancers."""
+    import boto.rds
+    conn = boto.rds.connect_to_region('us-east-1')
+    return [{
+        'id': x.id,
+        'name': getattr(x, 'DBName', None),  # DBName may not exist
+    } for x in conn.get_all_dbinstances()]
+
+
+@app.route('/list/rds')
+def list_rds():
+    data = {
+        'instances': get_rdss(),
+    }
+    return jsonify(**data)
+
+
 BASE_DIR = os.path.dirname(__file__)
 application = WhiteNoise(app.wsgi_app, max_age=0)
 application.add_files(
